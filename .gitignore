@@ -3,7 +3,6 @@
 # except for .gitignore
 !.gitignore
 
-sbt-launch.jar
 project/project
 project/target
 target
