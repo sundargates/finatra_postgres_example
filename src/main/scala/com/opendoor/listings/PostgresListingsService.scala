@@ -1,17 +1,47 @@
 package com.opendoor.listings
 
+import java.net.{URI, URL}
+
 import com.twitter.finagle.postgres
-import com.twitter.finagle.postgres.{RowReader, Row}
+import com.twitter.finagle.postgres.{Client, RowReader, Row}
 import com.twitter.util.Future
+import com.twitter.logging.Logger
 
 object PostgresListingsService {
-  val ListingsTable = "listings"
+  val ListingsTable = "opendoor_listings"
+  val BulkUpdatesSize = 10
+  val logger = Logger.get
+
+  def apply(dbUri: URI): Option[PostgresListingsService] = {
+    val regex = """postgres:\/+(\w+)(:(.+)@(.+):(\d+)\/(.+))?""".r
+    logger.info(s"dbUri=${dbUri}")
+    dbUri.toString match {
+      case regex(username, null, null, null, null, null) =>
+        logger.info("Only username found as part of the URI")
+        logger.info(s"username=${username}")
+        logger.info(s"database=${username}")
+        val client = Client("localhost:5432", username, None, username, hostConnectionLimit = 4)
+        Some(new PostgresListingsService(client, ListingsTable))
+      case regex(username, _, password, host, port, database) =>
+        logger.info(s"username=${username}")
+        logger.info(s"host=${host}")
+        logger.info(s"port=${port}")
+        logger.info(s"database=${database}")
+        val client = Client(s"${host}:${port}", username, Some(password), database, hostConnectionLimit = 4)
+        Some(new PostgresListingsService(client, ListingsTable))
+      case _ =>
+        logger.warning(s"Couldn't match dbUrl=${dbUri.toString} with regex=${regex.toString()}")
+        None
+    }
+  }
 }
 
 class PostgresListingsService(
   client: postgres.Client,
   listingsTable: String
 ) extends ListingsService {
+
+  private[this] val logger = Logger.get
 
   private[this] val Operators = new {
     val LEQ = "<="
@@ -25,9 +55,9 @@ class PostgresListingsService(
     val Price = "price"
     val Bedrooms = "bedrooms"
     val Bathrooms = "bathrooms"
-    val SquareFeet = "sq_feet"
-    val Latitude = "latitude"
-    val Longitude = "longitude"
+    val SquareFeet = "sq_ft"
+    val Latitude = "lat"
+    val Longitude = "lng"
   }
 
   object ListingsRowReader extends RowReader[Listing] {
@@ -36,12 +66,12 @@ class PostgresListingsService(
         id = row.get[Int](FieldNames.Id),
         street = row.get[String](FieldNames.Street),
         status = row.get[String](FieldNames.Status),
-        price = row.get[Long](FieldNames.Price),
-        bedrooms = row.get[Int](FieldNames.Bedrooms),
-        bathrooms = row.get[Int](FieldNames.Bathrooms),
-        squareFeet = row.get[Int](FieldNames.SquareFeet),
-        latitude = row.get[Double](FieldNames.Latitude),
-        longitude = row.get[Double](FieldNames.Longitude)
+        price = row.get[Integer](FieldNames.Price).longValue(),
+        bedrooms = row.get[Integer](FieldNames.Bedrooms).intValue(),
+        bathrooms = row.get[Integer](FieldNames.Bathrooms).intValue(),
+        squareFeet = row.get[Integer](FieldNames.SquareFeet).intValue(),
+        latitude = row.get[java.lang.Double](FieldNames.Latitude).doubleValue(),
+        longitude = row.get[java.lang.Double](FieldNames.Longitude).doubleValue()
       )
     }
   }
@@ -68,11 +98,13 @@ class PostgresListingsService(
     if (optionalParams.isEmpty) {
       baseQuery
     } else {
-      s"${baseQuery} WHERE ${optionalParams mkString " "}"
+      s"${baseQuery} WHERE ${optionalParams mkString " AND "}"
     }
   }
 
   override def filter(request: FilterListingsRequest): Future[Seq[Listing]] = {
-    client.select(selectQuery(request)) { ListingsRowReader(_) }
+    val query = selectQuery(request)
+    logger.debug(s"query=${query}")
+    client.select(query) { ListingsRowReader(_) }
   }
 }

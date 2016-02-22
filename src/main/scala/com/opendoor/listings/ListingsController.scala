@@ -12,18 +12,6 @@ import kantan.csv.generic.codecs._
 import play.api.libs.json._
 import play.extras.geojson._
 
-case class Car(year: Int, make: String, model: String, desc: Option[String], price: Float)
-
-sealed trait ListingStatus
-case object Pending extends ListingStatus
-case object Active extends ListingStatus
-case object Sold extends ListingStatus
-
-case class Location(
-  latitude: Double,
-  longitude: Double
-)
-
 //id,street,status,price,bedrooms,bathrooms,sq_ft,lat,lng
 case class Listing(
   id: Int,
@@ -90,10 +78,7 @@ trait ListingsService {
   def filter(request: FilterListingsRequest): Future[Seq[Listing]]
 }
 
-class InMemoryListingsService(uRL: URL) extends ListingsService {
-
-  val logger = Logger.get
-
+trait CsvBasedListingsService extends ListingsService {
   implicit val codec = scala.io.Codec.ISO8859
 
   implicit val rowDecoder: RowDecoder[Listing] = RowDecoder { ss =>
@@ -110,11 +95,18 @@ class InMemoryListingsService(uRL: URL) extends ListingsService {
     } yield new Listing(id, street, status, price, bedrooms, bathrooms, squareFeet, latitude, longitude)
   }
 
-  val listings =
+  def listingsFromUrl(uRL: URL): Seq[Listing] =
     uRL
       .asCsvReader[Listing](',', true)
       .toSeq
       .flatMap(_.toOption)
+}
+
+class InMemoryListingsService(uRL: URL) extends CsvBasedListingsService {
+
+  val logger = Logger.get
+
+  val listings = listingsFromUrl(uRL)
 
   logger.info(listings.length.toString)
 

@@ -1,6 +1,9 @@
 package com.opendoor
 
-import com.opendoor.listings.{InMemoryListingsService, ListingsController}
+import java.net.URI
+
+import com.opendoor.listings.{PostgresListingsService, InMemoryListingsService, ListingsController}
+import com.twitter.finagle.postgres
 import com.twitter.finagle.http.{Request, Response}
 import com.twitter.finatra.http.HttpServer
 import com.twitter.finatra.http.filters.CommonFilters
@@ -15,9 +18,14 @@ object Server extends HttpServer {
   override def modules = Seq(Slf4jBridgeModule)
 
   override def configureHttp(router: HttpRouter): Unit = {
-    val inMemoryListingsService = new InMemoryListingsService(getClass.getResource("/listing-details.csv"))
+    lazy val inMemoryListingsService =
+      new InMemoryListingsService(getClass.getResource("/listing-details.csv"))
 
-    val filteringService = inMemoryListingsService
+    lazy val optionalPostgresListingsService =
+      PostgresListingsService(new URI(System.getenv("DATABASE_URL")))
+
+    val filteringService =
+      optionalPostgresListingsService.getOrElse(inMemoryListingsService)
 
     router
       .filter[LoggingMDCFilter[Request, Response]]
