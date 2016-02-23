@@ -8,7 +8,6 @@ lazy val versions = new {
   val finatra = "2.1.3"
   val guice = "4.0"
   val logback = "1.0.13"
-  val redis = "2.7.2"
   val kantanCsv = "0.1.8"
   val geoJson = "1.3.1"
   val postgres = "0.1.0"
@@ -42,4 +41,3 @@ libraryDependencies ++= Seq(
 )
 
 enablePlugins(JavaAppPackaging)
-
