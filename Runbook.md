@@ -6,7 +6,7 @@
 
 - Install Sbt
 - Install Scala
-- `git clone git@github.com:sundargates/`
+- `git clone git@github.com:sundargates/finatra_postgres_example.git`
 - `sbt compile`
 - *(If you want to use a datastore)* Install postgres
 
