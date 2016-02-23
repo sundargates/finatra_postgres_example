@@ -2,8 +2,8 @@ package com.opendoor
 
 import java.net.URI
 
-import com.opendoor.listings.{PostgresListingsService, InMemoryListingsService, ListingsController}
-import com.twitter.finagle.postgres
+import com.opendoor.listings.controller.ListingsController
+import com.opendoor.listings.service.{InMemoryListingsService, PostgresListingsService}
 import com.twitter.finagle.http.{Request, Response}
 import com.twitter.finatra.http.HttpServer
 import com.twitter.finatra.http.filters.CommonFilters

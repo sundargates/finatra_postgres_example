@@ -1,16 +1,17 @@
-package com.opendoor.listings
+package com.opendoor.listings.service
 
-import java.net.{URI, URL}
+import java.net.URI
 
+import com.opendoor.listings.model.{FilterListingsRequest, Listing}
 import com.twitter.finagle.postgres
-import com.twitter.finagle.postgres.{Client, RowReader, Row}
-import com.twitter.util.Future
+import com.twitter.finagle.postgres.{Client, Row, RowReader}
 import com.twitter.logging.Logger
+import com.twitter.util.Future
 
 object PostgresListingsService {
   val ListingsTable = "opendoor_listings"
   val BulkUpdatesSize = 10
-  val logger = Logger.get
+  private[this] val logger = Logger.get
 
   def apply(dbUri: URI): Option[PostgresListingsService] = {
     val regex = """postgres:\/+(\w+)(:(.+)@(.+):(\d+)\/(.+))?""".r
@@ -102,7 +103,7 @@ class PostgresListingsService(
     }
   }
 
-  override def filter(request: FilterListingsRequest): Future[Seq[Listing]] = {
+  override def apply(request: FilterListingsRequest): Future[Seq[Listing]] = {
     val query = selectQuery(request)
     logger.debug(s"query=${query}")
     client.select(query) { ListingsRowReader(_) }
